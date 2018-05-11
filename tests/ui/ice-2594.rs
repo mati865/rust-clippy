@@ -8,5 +8,12 @@ pub struct Header<'a> {
 pub const EMPTY_HEADER: Header<'static> = Header { name: "", value: b"" };
 
 fn main() {
-    let mut headers = [EMPTY_HEADER; 10];
+    let txt = "something";
+    match txt {
+        "something" => {
+            let mut headers = [EMPTY_HEADER; 10];
+        }
+        "" => (),
+        _ => (),
+    }
 }
