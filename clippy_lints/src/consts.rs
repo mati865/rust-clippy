@@ -163,10 +163,10 @@ pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
     }
 }
 
-pub fn constant(lcx: &LateContext, e: &Expr) -> Option<(Constant, bool)> {
+pub fn constant(lcx: &LateContext, body: &ty::TypeckTables, e: &Expr) -> Option<(Constant, bool)> {
     let mut cx = ConstEvalLateContext {
         tcx: lcx.tcx,
-        tables: lcx.tcx.body_tables(e.id),
+        tables: body,
         param_env: lcx.param_env,
         needed_resolution: false,
         substs: lcx.tcx.intern_substs(&[]),
@@ -174,8 +174,8 @@ pub fn constant(lcx: &LateContext, e: &Expr) -> Option<(Constant, bool)> {
     cx.expr(e).map(|cst| (cst, cx.needed_resolution))
 }
 
-pub fn constant_simple(lcx: &LateContext, e: &Expr) -> Option<Constant> {
-    constant(lcx, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
+pub fn constant_simple(lcx: &LateContext, body: &ty::TypeckTables, e: &Expr) -> Option<Constant> {
+    constant(lcx, body, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
 
 /// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckTables`
@@ -200,7 +200,6 @@ pub struct ConstEvalLateContext<'a, 'tcx: 'a> {
 impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// simple constant folding: Insert an expression, get a constant or none.
     pub fn expr(&mut self, e: &Expr) -> Option<Constant> {
-        println!("e: {:?}", e.node);
         match e.node {
             ExprPath(ref qpath) => self.fetch_path(qpath, e.hir_id),
             ExprBlock(ref block) => self.block(block),
@@ -208,6 +207,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprLit(ref lit) => {
                 println!("here?");
                 println!("this? {:?}", self.tables.expr_ty(e));
+                // TODO: Have to use body_tables here somehow?
                 Some(lit_to_constant(&lit.node, self.tables.expr_ty(e)))
             },
             ExprArray(ref vec) => self.multi(vec).map(Constant::Vec),

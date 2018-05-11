@@ -1,6 +1,8 @@
 use consts::{constant_simple, constant_context};
 use rustc::lint::*;
 use rustc::hir::*;
+use rustc::hir::intravisit::{walk_body, NestedVisitorMap, Visitor};
+use rustc::ty::{TypeckTables};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use syntax::ast::Name;
@@ -16,15 +18,28 @@ use utils::differing_macro_contexts;
 pub struct SpanlessEq<'a, 'tcx: 'a> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'a, 'tcx>,
+    body: &'a TypeckTables<'tcx>,
     /// If is true, never consider as equal expressions containing function
     /// calls.
     ignore_fn: bool,
+}
+
+impl<'a, 'tcx: 'a> Visitor<'tcx> for SpanlessEq<'a, 'tcx> {
+    fn visit_body(&mut self, body: &'tcx Body) {
+        self.body = self.cx.tcx.body_tables(body.id());
+        walk_body(self, body);
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir)
+    }
 }
 
 impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         Self {
             cx,
+            body: cx.tables,
             ignore_fn: false,
         }
     }
@@ -32,6 +47,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     pub fn ignore_fn(self) -> Self {
         Self {
             cx: self.cx,
+            body: self.cx.tables,
             ignore_fn: true,
         }
     }
@@ -64,7 +80,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             return false;
         }
 
-        if let (Some(l), Some(r)) = (constant_simple(self.cx, left), constant_simple(self.cx, right)) {
+        if let (Some(l), Some(r)) = (constant_simple(self.cx, self.body, left), constant_simple(self.cx, self.body, right)) {
             if l == r {
                 return true;
             }
@@ -288,13 +304,26 @@ where
 pub struct SpanlessHash<'a, 'tcx: 'a> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'a, 'tcx>,
+    body: &'a TypeckTables<'tcx>,
     s: DefaultHasher,
+}
+
+impl<'a, 'tcx: 'a> Visitor<'tcx> for SpanlessHash<'a, 'tcx> {
+    fn visit_body(&mut self, body: &'tcx Body) {
+        self.body = self.cx.tcx.body_tables(body.id());
+        walk_body(self, body);
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir)
+    }
 }
 
 impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         Self {
             cx,
+            body: cx.tables,
             s: DefaultHasher::new(),
         }
     }
@@ -317,7 +346,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
     #[allow(many_single_char_names)]
     pub fn hash_expr(&mut self, e: &Expr) {
-        if let Some(e) = constant_simple(self.cx, e) {
+        if let Some(e) = constant_simple(self.cx, self.body, e) {
             return e.hash(&mut self.s);
         }
 
