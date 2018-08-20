@@ -54,6 +54,9 @@ script:
   - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
   - travis_retry rustup-toolchain-install-master -f -n master
   - rustup default master
+  - which rustc
+  - rustc --print sysroot
+  - ls $(rustc +master --print sysroot)/lib
   - |
     if [ -z ${INTEGRATION} ]; then
       ./ci/base-tests.sh
