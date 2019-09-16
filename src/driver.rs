@@ -13,8 +13,11 @@ use rustc_tools_util::*;
 
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
+use std::panic;
 
 mod lintlist;
+
+const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new";
 
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
@@ -247,8 +250,9 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
-    exit(
-        rustc_driver::report_ices_to_stderr_if_any(move || {
+    exit({
+        panic::set_hook(Box::new(|info| rustc_driver::report_ice(info, BUG_REPORT_URL)));
+        rustc_driver::catch_fatal_errors(move || {
             use std::env;
 
             if std::env::args().any(|a| a == "--version" || a == "-V") {
@@ -367,6 +371,6 @@ pub fn main() {
             rustc_driver::run_compiler(&args, callbacks, None, None)
         })
         .and_then(|result| result)
-        .is_err() as i32,
-    )
+        .is_err() as i32
+    })
 }

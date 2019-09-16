@@ -240,7 +240,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
     match hir_ty.node {
         TyKind::Path(ref qpath) if !is_local => {
             let hir_id = hir_ty.hir_id;
-            let res = cx.tables.qpath_res(qpath, hir_id);
+            let res = cx.tables.qpath_res(dbg!(qpath), dbg!(hir_id));
             if let Some(def_id) = res.opt_def_id() {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
                     if match_type_parameter(cx, qpath, &paths::VEC) {
