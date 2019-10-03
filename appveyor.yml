@@ -27,6 +27,7 @@ install:
     - set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin
     - rustc -V
     - cargo -V
+    - which cargo
 
 build: false
 
