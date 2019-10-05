@@ -1,0 +1,25 @@
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: Test on node ${{ matrix.node_version }} and ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install rustfmt
+      run: |
+        rustup component add rustfmt || cargo install --git https://github.com/rust-lang/rustfmt/ --force
+    - name: Install remark (Linux)
+      if: matrix.os == "ubuntu-latest"
+      run: |
+        . $HOME/.nvm/nvm.sh
+        nvm install stable
+        nvm use stable
+        npm install remark-cli remark-lint
+    - name: Run
+      run: |
+        
